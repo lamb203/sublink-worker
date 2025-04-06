@@ -27,7 +27,7 @@ export class BaseConfigBuilder {
         for (const url of urls) {
             // Try to decode if it might be base64
             const processedUrls = this.tryDecodeBase64(url);
-            
+
             // Handle single URL or array of URLs
             if (Array.isArray(processedUrls)) {
                 // Handle multiple URLs from a single base64 string
@@ -72,18 +72,18 @@ export class BaseConfigBuilder {
         try {
             // Try to decode as base64
             const decoded = decodeBase64(str);
-            
+
             // Check if decoded content contains multiple links
             if (decoded.includes('\n')) {
                 // Split by newline and filter out empty lines
                 const multipleUrls = decoded.split('\n').filter(url => url.trim() !== '');
-                
+
                 // Check if at least one URL is valid
                 if (multipleUrls.some(url => url.includes('://'))) {
                     return multipleUrls;
                 }
             }
-            
+
             // Check if the decoded string looks like a valid URL
             if (decoded.includes('://')) {
                 return decoded;
@@ -164,6 +164,7 @@ export class BaseConfigBuilder {
 
         this.addAutoSelectGroup(proxyList);
         this.addNodeSelectGroup(proxyList);
+        this.addChainProxySupport(proxyList);
         this.addOutboundGroups(outbounds, proxyList);
         this.addCustomRuleGroups(proxyList);
         this.addFallBackGroup(proxyList);

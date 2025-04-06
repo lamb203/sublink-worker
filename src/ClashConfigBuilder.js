@@ -23,7 +23,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
     }
 
     convertProxy(proxy) {
-        switch(proxy.type) {
+        switch (proxy.type) {
             case 'shadowsocks':
                 return {
                     name: proxy.tag,
@@ -65,7 +65,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'ws-opts': proxy.transport?.type === 'ws' ? {
                         path: proxy.transport.path,
                         headers: proxy.transport.headers
-                    }: undefined,
+                    } : undefined,
                     'reality-opts': proxy.tls.reality?.enabled ? {
                         'public-key': proxy.tls.reality.public_key,
                         'short-id': proxy.tls.reality.short_id,
@@ -73,7 +73,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'grpc-opts': proxy.transport?.type === 'grpc' ? {
                         'grpc-service-name': proxy.transport.service_name,
                     } : undefined,
-                    tfo : proxy.tcp_fast_open,
+                    tfo: proxy.tcp_fast_open,
                     'skip-cert-verify': proxy.tls.insecure,
                     'flow': proxy.flow ?? undefined,
                 };
@@ -104,7 +104,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'ws-opts': proxy.transport?.type === 'ws' ? {
                         path: proxy.transport.path,
                         headers: proxy.transport.headers
-                    }: undefined,
+                    } : undefined,
                     'reality-opts': proxy.tls.reality?.enabled ? {
                         'public-key': proxy.tls.reality.public_key,
                         'short-id': proxy.tls.reality.short_id,
@@ -112,7 +112,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'grpc-opts': proxy.transport?.type === 'grpc' ? {
                         'grpc-service-name': proxy.transport.service_name,
                     } : undefined,
-                    tfo : proxy.tcp_fast_open,
+                    tfo: proxy.tcp_fast_open,
                     'skip-cert-verify': proxy.tls.insecure,
                     'flow': proxy.flow ?? undefined,
                 };
@@ -193,6 +193,32 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             proxies: [t('outboundNames.Node Select'), ...proxyList]
         });
     }
+    addChainProxySupport(proxyList) {
+        // 创建链式代理列表
+        const chainProxies = this.config.proxies.map(proxy => ({
+            ...proxy,
+            name: proxy.name + '-chain',
+            'dialer-proxy': '🔗 中转站'
+        }));
+
+        // 添加链式代理到 proxies 配置中
+        this.config.proxies.push(...chainProxies);
+        const chainProxyList = chainProxies.map(proxy => proxy.name);
+
+        // 创建链式落地代理组
+        this.config['proxy-groups'].push({
+            type: "select",
+            name: "🔓 链式落地",
+            proxies: [...chainProxyList]
+        });
+
+        // 创建中转站代理组
+        this.config['proxy-groups'].push({
+            type: "select",
+            name: "🔗 中转站",
+            proxies: [...proxyList]
+        });
+    }
 
     // 生成规则
     generateRules() {
@@ -202,10 +228,10 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
     formatConfig() {
         const rules = this.generateRules();
         const ruleResults = [];
-        
+
         // 获取.mrs规则集配置
         const { site_rule_providers, ip_rule_providers } = generateClashRuleSets(this.selectedRules, this.customRules);
-        
+
         // 添加规则集提供者
         this.config['rule-providers'] = {
             ...site_rule_providers,
@@ -218,28 +244,28 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
 
         rules.filter(rule => !!rule.domain_suffix || !!rule.domain_keyword).map(rule => {
             rule.domain_suffix.forEach(suffix => {
-                ruleResults.push(`DOMAIN-SUFFIX,${suffix},${t('outboundNames.'+ rule.outbound)}`);
+                ruleResults.push(`DOMAIN-SUFFIX,${suffix},${t('outboundNames.' + rule.outbound)}`);
             });
             rule.domain_keyword.forEach(keyword => {
-                ruleResults.push(`DOMAIN-KEYWORD,${keyword},${t('outboundNames.'+ rule.outbound)}`);
+                ruleResults.push(`DOMAIN-KEYWORD,${keyword},${t('outboundNames.' + rule.outbound)}`);
             });
         });
 
         rules.filter(rule => !!rule.site_rules[0]).map(rule => {
             rule.site_rules.forEach(site => {
-                ruleResults.push(`RULE-SET,${site},${t('outboundNames.'+ rule.outbound)}`);
+                ruleResults.push(`RULE-SET,${site},${t('outboundNames.' + rule.outbound)}`);
             });
         });
 
         rules.filter(rule => !!rule.ip_rules[0]).map(rule => {
             rule.ip_rules.forEach(ip => {
-                ruleResults.push(`RULE-SET,${ip},${t('outboundNames.'+ rule.outbound)},no-resolve`);
+                ruleResults.push(`RULE-SET,${ip},${t('outboundNames.' + rule.outbound)},no-resolve`);
             });
         });
 
         rules.filter(rule => !!rule.ip_cidr).map(rule => {
             rule.ip_cidr.forEach(cidr => {
-                ruleResults.push(`IP-CIDR,${cidr},${t('outboundNames.'+ rule.outbound)},no-resolve`);
+                ruleResults.push(`IP-CIDR,${cidr},${t('outboundNames.' + rule.outbound)},no-resolve`);
             });
         });
 

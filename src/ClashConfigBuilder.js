@@ -218,6 +218,13 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             name: "🔗 中转站",
             proxies: [...proxyList]
         });
+
+        const nodeSelectGroup = this.config['proxy-groups'].find(
+            group => group.name === t('outboundNames.Node Select')
+        );
+        if (nodeSelectGroup) {
+            nodeSelectGroup.proxies.push("🔓 链式落地");
+        }
     }
 
     // 生成规则

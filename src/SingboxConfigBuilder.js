@@ -1,4 +1,4 @@
-import { SING_BOX_CONFIG, generateRuleSets, generateRules, getOutbounds, PREDEFINED_RULE_SETS} from './config.js';
+import { SING_BOX_CONFIG, generateRuleSets, generateRules, getOutbounds, PREDEFINED_RULE_SETS } from './config.js';
 import { BaseConfigBuilder } from './BaseConfigBuilder.js';
 import { DeepCopy } from './utils.js';
 import { t } from './i18n/index.js';
@@ -60,8 +60,41 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
         });
     }
 
+    addChainProxyGroups(proxyList) {
+        // 1. 创建原始节点的备份，用于落地代理组
+        const originalProxies = this.getProxies();
+        const landingProxies = [];
+
+        originalProxies.forEach(proxy => {
+            // 为每个节点创建备份，添加 detour 字段指向前置代理
+            const landingProxy = DeepCopy(proxy);
+            landingProxy.tag = `落地-${proxy.tag}`;
+            landingProxy.detour = "前置代理";
+            landingProxies.push(landingProxy);
+
+            // 将落地节点添加到配置中
+            this.config.outbounds.push(landingProxy);
+        });
+
+        // 2. 添加前置代理组（包含所有原始节点）
+        this.config.outbounds.push({
+            type: "selector",
+            tag: "前置代理",
+            outbounds: ["DIRECT", ...proxyList]
+        });
+
+        // 3. 添加落地代理组（只包含落地节点）
+        const landingProxyNames = landingProxies.map(proxy => proxy.tag);
+        this.config.outbounds.push({
+            type: "selector",
+            tag: "落地代理",
+            outbounds: landingProxyNames
+        });
+    }
+
     addNodeSelectGroup(proxyList) {
         proxyList.unshift('DIRECT', 'REJECT', t('outboundNames.Auto Select'));
+        proxyList.push('落地代理');
         this.config.outbounds.unshift({
             type: "selector",
             tag: t('outboundNames.Node Select'),
@@ -103,7 +136,7 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
 
     formatConfig() {
         const rules = generateRules(this.selectedRules, this.customRules);
-        const { site_rule_sets, ip_rule_sets } = generateRuleSets(this.selectedRules,this.customRules);
+        const { site_rule_sets, ip_rule_sets } = generateRuleSets(this.selectedRules, this.customRules);
 
         this.config.route.rule_set = [...site_rule_sets, ...ip_rule_sets];
 
@@ -119,7 +152,7 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
         rules.filter(rule => !!rule.site_rules[0]).map(rule => {
             this.config.route.rules.push({
                 rule_set: [
-                ...(rule.site_rules.length > 0 && rule.site_rules[0] !== '' ? rule.site_rules : []),
+                    ...(rule.site_rules.length > 0 && rule.site_rules[0] !== '' ? rule.site_rules : []),
                 ],
                 protocol: rule.protocol,
                 outbound: t(`outboundNames.${rule.outbound}`)
@@ -129,11 +162,11 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
         rules.filter(rule => !!rule.ip_rules[0]).map(rule => {
             this.config.route.rules.push({
                 rule_set: [
-                ...(rule.ip_rules.filter(ip => ip.trim() !== '').map(ip => `${ip}-ip`))
+                    ...(rule.ip_rules.filter(ip => ip.trim() !== '').map(ip => `${ip}-ip`))
                 ],
                 protocol: rule.protocol,
                 outbound: t(`outboundNames.${rule.outbound}`)
-          });
+            });
         });
 
         rules.filter(rule => !!rule.ip_cidr).map(rule => {
